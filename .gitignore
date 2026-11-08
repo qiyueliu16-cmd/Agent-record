@@ -10,5 +10,7 @@ __pycache__/
 **/.agent-log/backups/
 **/.agent-log/.lock
 
-# 可选图标：由 assets/make_icon.py 生成，需 Pillow
+# 生成的图标（由 assets/make_icon.py 用纯标准库现场生成，无需入库）
 app/assets/AppIcon.icns
+app/assets/AppIcon.png
+app/assets/AppIcon.iconset/

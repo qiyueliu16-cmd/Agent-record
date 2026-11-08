@@ -28,7 +28,22 @@ except ImportError:  # pragma: no cover
     fcntl = None
 
 HERE = Path(__file__).resolve().parent
-LOGS = HERE / "logs"
+
+
+def runtime_logs() -> Path:
+    """在 .app 内运行时把状态写到用户目录，避免改动已签名的 bundle。
+
+    直接从仓库运行时仍写 app/logs/（已被 .gitignore 排除）。
+    """
+    if ".app/Contents/" in str(HERE):
+        base = Path.home() / "Library" / "Application Support" / "Agent执行记录" / "logs"
+    else:
+        base = HERE / "logs"
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+LOGS = runtime_logs()
 STATE = LOGS / "desktop_app.json"
 LOCK = LOGS / "desktop_launch.lock"
 SERVER = HERE / "server.py"
@@ -236,7 +251,7 @@ def chrome_app_window(url: str) -> bool:
 
 def open_window(url: str) -> str:
     try:
-        import webview  # noqa: PLC0415  可选依赖，新叶的 venv 里有
+        import webview  # noqa: PLC0415  可选依赖；未安装时自动降级为浏览器窗口
     except Exception:
         webview = None
     if webview is not None:

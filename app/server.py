@@ -24,8 +24,20 @@ sys.path.insert(0, str(HERE))
 import report as report_mod  # noqa: E402
 
 APP_MARK = "agent-execution-log"
-STATE = HERE / "logs" / "app.json"
-LOGS = HERE / "logs"
+
+
+def runtime_logs() -> Path:
+    """在自包含 .app 内运行时把状态写到用户目录，避免改动已签名的 bundle。"""
+    if ".app/Contents/" in str(HERE):
+        base = Path.home() / "Library" / "Application Support" / "Agent执行记录" / "logs"
+    else:
+        base = HERE / "logs"
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+LOGS = runtime_logs()
+STATE = LOGS / "app.json"
 LEDGER_DIR = ".agent-log"
 LEDGER_NAME = "ledger.json"
 # 默认打开仓库自带的合成示例项目；真实项目用 AGENT_LOG_ROOT 或界面切换指定。

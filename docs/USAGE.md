@@ -6,9 +6,22 @@
 
 ## 1. 安装与启动
 
+选择一种方式取得代码：
+
 ```bash
+# 方式 A：Git 克隆，目录名 Agent-record
 git clone https://github.com/qiyueliu16-cmd/Agent-record.git
 cd Agent-record
+
+# 方式 B：仓库页 Code → Download ZIP，解压后目录名是 Agent-record-main
+# （注意不是 Agent-record，后续命令需在这个目录内执行）
+cd Agent-record-main
+```
+
+随后：
+
+```bash
+make check    # 建议先跑一次自检
 make setup    # 安装 Agent 记录 skill
 make start    # 启动工作台，默认 http://127.0.0.1:58400
 ```
@@ -20,25 +33,40 @@ make start    # 启动工作台，默认 http://127.0.0.1:58400
 | 环境 | 命令 | 说明 |
 |---|---|---|
 | macOS / Linux（图形界面） | `make start` | 自动开浏览器或 Chrome 应用窗口 |
-| 远程 / 无窗口 | `make headless` | 只启动服务，浏览器手动访问 `http://127.0.0.1:58400` |
-| Windows | `python app/server.py --serve` | 手动打开上述地址，功能一致 |
-| macOS 桌面应用 | `make desktop` | 生成 `~/Applications/Agent执行记录.app`，双击启动（可选） |
+| 远程 / 无窗口 | `make headless` | 只启动服务，浏览器手动访问控制台地址 |
+| Windows 或没有 `make` | `python3 app/launcher.py` | 等价启动；自检用 `python3 app/launcher.py --selftest` |
+| 仅控制台 | `python3 app/server.py --serve` | 手动打开 `http://127.0.0.1:58400` |
+| macOS 桌面应用 | `make desktop` | 生成 `~/Applications/Agent执行记录.app`，双击启动 |
 
-`make check` 可在不开窗的情况下完成端到端自检；`make stop` 停止后台服务。端口被占用时会自动顺延，可用 `AGENT_LOG_PORT` 修改起始端口。
+`make check` 可在不开窗的情况下完成端到端自检；`make stop` 停止后台服务。端口被占用时会自动顺延，用 `make url` 查看实际地址，或用 `AGENT_LOG_PORT` 修改起始端口。
 
 启动后默认打开仓库自带的 `examples/demo-project`。界面左上是课题总问题，左侧是记录时间线，中间是分步编辑区，右侧是当前项目可关联的文件列表，右上提供「生成报告」「重新扫描文件」「生成同步命令」等操作。
+
+### 1.1 桌面应用（推荐日常使用）
+
+```bash
+make desktop
+```
+
+- 生成 `~/Applications/Agent执行记录.app` 并在桌面创建快捷方式，双击即可打开，与长期安装的软件体验一致。
+- 图标由 `app/assets/make_icon.py` 用纯标准库现场生成，**不需要 Pillow 或 iconutil**。
+- 应用是**自包含**的：仓库内容已复制进 `.app`，之后删除或移动下载解压的目录不影响使用；重新运行 `make desktop` 会保留已打开的项目状态。
+- 桌面应用内运行时，日志与状态写在 `~/Library/Application Support/Agent执行记录/logs/`，避免改动已签名的应用包。
+- 如果已存在同名 `.app` 但不是本仓库生成的，构建器会先把它备份为 `.bak-<时间戳>`，不会静默覆盖。
 
 ---
 
 ## 2. 切换到自己的项目
 
-在工作台「项目根目录」填入绝对路径并确认，账本会读写该项目下的 `.agent-log/ledger.json`；目录不存在时按空白账本初始化。也可在启动时指定：
+在工作台「项目根目录」填入绝对路径并点「打开项目」，账本会读写该项目下的 `.agent-log/ledger.json`；目录不存在时按空白账本初始化。也可在启动时指定：
 
 ```bash
 AGENT_LOG_ROOT=/path/to/project make start
 ```
 
-建议一个研究课题对应一个项目目录，账本随项目一起纳入 Git。工作台只在本机 `app/logs/` 里记住最近打开过哪些项目，这个目录不入库，也不应公开。
+建议一个研究课题对应一个项目目录，账本随项目一起纳入 Git。把脚本、结果表和图（PNG / JPG / SVG / PDF 等）放进这个项目，点「重新扫描文件」后即可在右侧勾选关联；图片会自动内嵌进报告，PDF 等文件列入附录。
+
+工作台只在本机状态文件里记住最近打开过哪些项目，这些文件不入库，也不应公开。
 
 ---
 
@@ -76,7 +104,26 @@ AGENT_LOG_ROOT=/path/to/project make start
 
 会话结束后没有后台进程继续监听，因此平台不做静默追记，也不在每次任务结束时自动写入。**「什么时候记」由研究者决定，「记什么、怎么写」由 Agent 自动完成**。这样既避免账本混入无关内容，也保持「Agent 带路、决定权在你」的分工。若不点名，Agent 不会写账本。
 
-### 3.3 记录器命令
+### 3.3 让不同 Agent 都能用
+
+`make setup` 默认面向 WorkBuddy。其它 Agent 指定各自的 skills 目录即可，安装内容完全一致：
+
+```bash
+# WorkBuddy
+make setup
+
+# Claude Code
+python3 scripts/install_skill.py --target ~/.claude/skills/agent-execution-log
+
+# 其它支持 skill / rules 机制的 Agent
+python3 scripts/install_skill.py --target /path/to/agent/skills/agent-execution-log
+```
+
+若所用 Agent 没有 skills 机制，把 `skill/SKILL.md` 作为会话规则或系统提示提供，并告知它调用 `skill/scripts/append_record.py` 即可。该脚本是纯标准库命令行工具，**不依赖工作台是否运行**，因此也可以由任何能执行本地命令的 Agent 驱动。
+
+安装后需新开一个 Agent 会话，让该会话加载到 skill；旧会话不会自动生效。
+
+### 3.4 记录器命令
 
 安装后脚本位于 `~/.workbuddy/skills/agent-execution-log/scripts/append_record.py`，也可直接使用仓库中的 `skill/scripts/append_record.py`。全局参数必须放在子命令之前。
 
@@ -95,7 +142,7 @@ python3 "$S" --root /path/to/new/project --init append --payload-file /tmp/paylo
 
 `--dry-run` 只预览、不写盘；`decisions` 按 id 合并，未提及的决策保持原样；`decide` 只改指定决策的 `choice` / `note` / `status`。每条记录会自动补齐 `id`、时间戳与默认字段，`code.content` 恒为空（报告现场读盘）。绝对路径、含 `..` 的路径会被拒绝；文件尚未从服务器同步下来只给警告、不阻断。
 
-### 3.4 记录字段
+### 3.5 记录字段
 
 | 字段 | 含义 |
 |---|---|
@@ -146,13 +193,16 @@ rsync -avP my-server:/home/user/project/results/figure.svg /path/to/project/from
 
 | 现象 | 处理 |
 |---|---|
-| 端口被占用 | 启动器自动顺延；也可用 `AGENT_LOG_PORT=58500 make start` |
-| 页面打不开 | 确认代理未劫持本地请求；启动器已自动清空代理并设置 `no_proxy` |
+| 下载 ZIP 后 `cd Agent-record` 提示不存在 | ZIP 解压目录名是 `Agent-record-main`，进入该目录再执行 |
+| 端口被占用 | 启动器自动顺延；用 `make url` 看实际地址，或 `AGENT_LOG_PORT=58500 make start` |
+| 页面打不开 | 先跑 `make check`；确认代理未劫持本地请求，启动器已自动清空代理并设置 `no_proxy` |
+| 没有 `make` 命令 | 直接用 `python3 app/launcher.py`、`python3 scripts/install_skill.py` |
+| 删除下载目录后桌面应用失效 | 不会发生：`.app` 自包含。若用的是旧版本，重新运行 `make desktop` |
 | 报告里图片不显示 | 检查文件是否在项目目录内、路径是否为相对路径；改完点「重新扫描文件」 |
 | 代码未出现在报告 | `code[].path` 指向的文件不存在或写成了绝对路径 |
 | 中文显示异常 | 页面与报告均为 UTF-8；若浏览器字体缺失，检查系统字体设置 |
 | 记录写进了错误项目 | 用 `--root` 显式指定项目根；账本按目录隔离，不会自动跨项目 |
-| Agent 没有记录 | 需要显式点名 `agent-execution-log` 或说「记一笔」；平台不做后台静默追记 |
+| Agent 没有记录 | 需要显式点名 `agent-execution-log` 或说「记一笔」，并在安装 skill 后新开会话 |
 
 ---
 
@@ -161,5 +211,5 @@ rsync -avP my-server:/home/user/project/results/figure.svg /path/to/project/from
 - 示例项目全部为合成演示数据，不对应任何真实研究。
 - 账本不复制代码与图片字节；只保存相对路径与文字描述。
 - 服务只绑定 `127.0.0.1`，资源读取限制在项目目录内，拒绝路径穿越。
-- `app/logs/` 可能包含本机项目路径，已由 `.gitignore` 排除，请勿公开。
+- `app/logs/`（直接运行）与 `~/Library/Application Support/Agent执行记录/logs/`（桌面应用）可能包含本机项目路径，均不入库，请勿公开。
 - 平台不执行分析代码、不连服务器、不上传任何数据；研究者对写入账本的内容与最终报告负责。

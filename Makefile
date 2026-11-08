@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: setup start headless check desktop stop demo
+.PHONY: setup start headless check desktop stop demo url
 
 setup:
 	$(PYTHON) scripts/install_skill.py
@@ -24,3 +24,6 @@ demo:
 	@echo "示例项目：examples/demo-project"
 	@echo "账本：examples/demo-project/.agent-log/ledger.json"
 	@echo "启动后在工作台点「生成报告」即可看到带图报告。"
+
+url:
+	@$(PYTHON) app/launcher.py --status || echo "服务未启动，先运行 make start"
