@@ -1,0 +1,14 @@
+# 运行时状态与日志（含本机项目路径，不入库）
+app/logs/
+__pycache__/
+*.py[cod]
+.DS_Store
+*.tmp
+
+# 生成的报告与账本备份
+**/Agent执行记录_报告/
+**/.agent-log/backups/
+**/.agent-log/.lock
+
+# 可选图标：由 assets/make_icon.py 生成，需 Pillow
+app/assets/AppIcon.icns

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent执行记录</title>
+<style>
+:root{--ink:#20242b;--muted:#6b7280;--line:#e3e6ea;--bg:#f6f7f4;--card:#fff;
+--accent:#2f6f62;--accent-soft:#e8f2ef;--warn:#a8641c;--warn-soft:#fdf3e5;
+--shadow:0 1px 2px rgba(20,30,25,.04),0 6px 20px rgba(20,30,25,.05)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.65;
+ font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.94);
+ backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.bar{max-width:1500px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;white-space:nowrap}
+.brand .mark{width:26px;height:26px;border-radius:7px;background:var(--accent);color:#fff;
+ display:grid;place-items:center;font:700 13px/1 ui-monospace,monospace}
+.brand small{font-weight:400;color:var(--muted);font-size:11px;letter-spacing:.08em}
+.pathbox{flex:1;min-width:260px;display:flex;gap:8px;align-items:center}
+.pathbox input{width:100%;padding:7px 11px;border:1px solid var(--line);border-radius:7px;
+ background:#fafbf9;font:12px/1.4 ui-monospace,monospace;color:#47505a}
+.btn{padding:7px 13px;border:1px solid var(--line);background:#fff;border-radius:7px;
+ font-size:13px;white-space:nowrap;transition:.15s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.primary:hover{background:#24584e;color:#fff}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.ghost:hover{background:#eef1ee;color:var(--ink)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn.danger:hover{border-color:#c0392b;color:#c0392b}
+.hint{max-width:1500px;margin:0 auto;padding:0 24px 10px;font-size:12px;color:var(--muted)}
+.hint b{color:var(--accent);font-weight:600}
+.layout{max-width:1500px;margin:0 auto;padding:20px 24px 80px;
+ display:grid;grid-template-columns:270px minmax(0,1fr) 290px;gap:18px;align-items:start}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow)}
+.panel h3{margin:0;padding:13px 16px;font-size:12px;letter-spacing:.06em;color:var(--muted);
+ border-bottom:1px solid var(--line);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.pad{padding:14px 16px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+.field label .tip{font-weight:400;color:#a0a7ae;font-size:11px}
+input[type=text],textarea,select{width:100%;padding:8px 10px;border:1px solid var(--line);
+ border-radius:7px;background:#fcfdfb;outline:none;line-height:1.6}
+input[type=text]:focus,textarea:focus,select:focus{border-color:var(--accent);
+ box-shadow:0 0 0 3px var(--accent-soft);background:#fff}
+textarea{resize:vertical;min-height:64px}
+textarea.tall{min-height:110px}
+.mono{font:12px/1.5 ui-monospace,monospace}
+.rec-list{list-style:none;margin:0;padding:6px}
+.rec-list li{border-radius:8px;margin-bottom:3px}
+.rec-list button{width:100%;text-align:left;background:transparent;border:0;padding:9px 10px;
+ border-radius:8px;display:flex;gap:9px;align-items:flex-start}
+.rec-list button:hover{background:#f2f5f2}
+.rec-list button.active{background:var(--accent-soft)}
+.rec-list .n{flex:0 0 22px;height:22px;line-height:22px;text-align:center;border-radius:5px;
+ background:#eef0f2;font:600 11px/22px ui-monospace,monospace}
+.rec-list button.active .n{background:var(--accent);color:#fff}
+.rec-list .t{flex:1;font-size:13px;line-height:1.45}
+.rec-list .s{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.rec-list .badge{display:inline-block;font-size:10px;color:var(--warn);
+ background:var(--warn-soft);padding:0 5px;border-radius:4px;margin-left:4px}
+.rec-list .pending .t{color:var(--warn)}
+.empty{padding:26px 16px;text-align:center;color:var(--muted);font-size:13px}
+.section{margin-bottom:16px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-head h2{font-size:15px;margin:0;display:flex;align-items:center;gap:8px}
+.section-head h2::before{content:"";width:3px;height:15px;background:var(--accent);border-radius:2px}
+.section-head .desc{font-size:11px;color:#a0a7ae;font-weight:400}
+.card{border:1px solid var(--line);border-radius:9px;padding:13px;margin-bottom:10px;background:#fcfdfb}
+.card .row{display:flex;gap:8px;align-items:center}
+.card .row>*{min-width:0}
+.card .key{width:26px;height:24px;flex:0 0 26px;line-height:24px;text-align:center;
+ border-radius:5px;background:#eef0f2;font:600 12px/24px ui-monospace,monospace}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.decision{background:#fff;border:1px solid var(--line);border-left:3px solid var(--accent);
+ border-radius:9px;padding:14px;margin-bottom:10px}
+.decision.pending-dec{border-left-color:var(--warn)}
+.verdict{font-size:12px;padding:7px 11px;border-radius:6px;margin-top:10px;background:var(--accent-soft);color:#1f574b}
+.verdict.wait{background:var(--warn-soft);color:var(--warn)}
+.file-item{display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:6px;font-size:12px}
+.file-item:hover{background:#f2f5f2}
+.file-item input[type=checkbox]{flex:0 0 auto;accent-color:var(--accent)}
+.file-item .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ font:11px/1.5 ui-monospace,monospace}
+.file-item .k{flex:0 0 auto;font-size:10px;color:var(--accent);background:var(--accent-soft);
+ border-radius:4px;padding:1px 5px}
+.file-item .sz{flex:0 0 auto;color:#aab0b7;font-size:10px}
+.file-scroll{max-height:520px;overflow:auto}
+.pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;
+ background:#eef0f2;color:var(--muted)}
+.pill.img{background:var(--accent-soft);color:var(--accent)}
+.thumb{width:100%;border:1px solid var(--line);border-radius:6px;margin-top:6px;display:block}
+.anchor{font:11px/1.5 ui-monospace,monospace;color:var(--muted);background:#f3f5f3;
+ padding:6px 9px;border-radius:6px;display:inline-block}
+.toast{position:fixed;right:22px;bottom:22px;z-index:60;background:var(--ink);color:#fff;
+ padding:11px 16px;border-radius:9px;font-size:13px;box-shadow:var(--shadow);
+ opacity:0;transform:translateY(8px);transition:.22s;pointer-events:none;max-width:420px}
+.toast.show{opacity:1;transform:none}
+.modal{position:fixed;inset:0;z-index:50;background:rgba(20,28,25,.42);
+ display:none;align-items:center;justify-content:center;padding:28px}
+.modal.show{display:flex}
+.modal .box{background:#fff;border-radius:12px;padding:22px;width:min(760px,100%);
+ max-height:82vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.modal .box h3{margin:0 0 12px;font-size:16px}
+.modal pre{background:#f6f8f6;padding:14px;border-radius:8px;font:12px/1.7 ui-monospace,monospace;
+ white-space:pre-wrap;word-break:break-all;max-height:46vh;overflow:auto}
+.modal .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.divider{height:1px;background:var(--line);margin:18px 0}
+.status-line{font-size:11px;color:var(--muted);padding:8px 16px;border-top:1px solid var(--line)}
+@media(max-width:1180px){.layout{grid-template-columns:230px minmax(0,1fr)}
+ .col-files{grid-column:1/-1}.file-scroll{max-height:260px}}
+@media(max-width:800px){.layout{grid-template-columns:1fr}.col-files{grid-column:auto}
+ .grid2,.grid3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand"><span class="mark">AL</span>Agent执行记录 <small>AGENT EXECUTION LOG</small></div>
+    <div class="pathbox"><input id="rootInput" class="mono" placeholder="项目目录绝对路径"></div>
+    <button class="btn" id="btnOpenProject">打开项目</button>
+    <button class="btn" id="btnRescan">重新扫描文件</button>
+    <button class="btn" id="btnSave">保存</button>
+    <button class="btn primary" id="btnReport">生成报告</button>
+    <button class="btn ghost" id="btnOpenReport">预览报告</button>
+  </div>
+  <div class="hint"><b>用法</b>：① 选一个本地项目文件夹 → ② 每条记录写清「回答什么 / 关键选择 / 结果 / 技术细节」，右侧勾选文件即关联 → ③ 点「生成报告」得到带图、带代码、带说明的单文件 HTML（可直接打印 PDF）。服务器上的代码只需登记路径，不必下载大数据。</div>
+</header>
+
+<div class="layout">
+  <!-- 左栏 -->
+  <div>
+    <div class="panel section">
+      <h3>课题 · 总问题</h3>
+      <div class="pad">
+        <div class="field"><label>项目名</label>
+          <input type="text" data-meta="project.name" placeholder="例如：两组样本表达量比较"></div>
+        <div class="field"><label>这个项目要回答什么</label>
+        <textarea data-meta="question" style="min-height:96px" placeholder="一句话写清研究问题"></textarea></div>
+        <div class="divider"></div>
+        <div class="field"><label>服务器别名 <span class="tip">只登记，不连接</span></label>
+          <input type="text" data-meta="project.server.alias" placeholder="my-server"></div>
+        <div class="field"><label>服务器项目根目录</label>
+          <input type="text" class="mono" data-meta="project.server.root" placeholder="/home/user/project"></div>
+        <button class="btn sm" id="btnSync">生成同步命令</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>执行记录 <button class="btn sm" id="btnAdd">＋ 新增一步</button></h3>
+      <ul class="rec-list" id="recList"></ul>
+      <div class="status-line" id="statusLine">就绪</div>
+    </div>
+  </div>
+
+  <!-- 中栏 -->
+  <div id="editor" class="panel"><div class="pad"><div class="empty">从左侧选一条记录开始</div></div></div>
+
+  <!-- 右栏 -->
+  <div class="col-files panel">
+    <h3>项目文件 <button class="btn sm" id="btnReveal">在 Finder 显示</button></h3>
+    <div class="pad" style="padding-bottom:6px">
+      <input type="text" id="fileFilter" placeholder="筛选文件名…">
+      <div style="font-size:11px;color:var(--muted);margin-top:7px">
+        勾选即关联到当前记录：图片进「结果图」，脚本进「代码」，其余进「关联文件」。
+      </div>
+    </div>
+    <div class="file-scroll" id="fileList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="box">
+  <h3 id="modalTitle">同步命令</h3>
+  <div id="modalBody"></div>
+  <div class="foot"><button class="btn" id="btnCopy">复制</button>
+  <button class="btn primary" id="btnCloseModal">关闭</button></div>
+</div></div>
+
+<script>
+let L = null, curId = null, FILES = [], saveTimer = null, modalText = "";
+const $ = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
+function status(msg){ $('#statusLine').textContent = msg; }
+async function api(path, opts={}){
+  const r = await fetch(path, {cache:'no-store', ...opts,
+    headers:{'Content-Type':'application/json', ...(opts.headers||{})}});
+  if(!r.ok) throw new Error(`${r.status} ${path}`);
+  return r.json();
+}
+function getByPath(obj, path){
+  return path.split('.').reduce((o,k)=> (o==null? undefined : o[/^\d+$/.test(k)?+k:k]), obj);
+}
+function setByPath(obj, path, val){
+  const keys = path.split('.'); const last = keys.pop();
+  let cur = obj;
+  for(const k of keys){ const key = /^\d+$/.test(k)?+k:k;
+    if(cur[key]==null) cur[key] = /^\d+$/.test(keys[keys.indexOf(k)+1]||'') ? [] : {};
+    cur = cur[key]; }
+  cur[/^\d+$/.test(last)?+last:last] = val;
+}
+function rec(){ return L.records.find(r=>r.id===curId); }
+function scheduleSave(){ status('有未保存的修改…'); clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>save(true), 1200); }
+async function save(silent=false){
+  if(!L) return;
+  try{ const out = await api('/api/ledger',{method:'POST',body:JSON.stringify({ledger:L})});
+    status('已保存 '+out.updatedAt.split('T')[1]); if(!silent) toast('已保存到项目目录'); }
+  catch(e){ status('保存失败：'+e.message); if(!silent) toast('保存失败：'+e.message); }
+}
+
+function renderList(){
+  const ul=$('#recList');
+  if(!L.records.length){ ul.innerHTML='<div class="empty">还没有记录，点「新增一步」</div>'; return; }
+  ul.innerHTML = L.records.map((r,i)=>{
+    const waiting = (r.decisions||[]).filter(d=>!d.choice).length;
+    return `<li><button data-id="${esc(r.id)}"
+    class="${r.id===curId?'active':''} ${r.status==='pending'?'pending':''}">
+    <span class="n">${String(i+1).padStart(2,'0')}</span>
+    <span class="t">${esc(r.title||'未命名步骤')}
+      <span class="s">${r.status==='pending'?'待决定':'已完成'} · ${(r.files||[]).length} 文件 · ${(r.decisions||[]).length} 个选择${waiting?`<span class="badge">${waiting} 个待拍板</span>`:''}</span>
+    </span></button></li>`;
+  }).join('');
+  $$('#recList button').forEach(b=>b.onclick=()=>{curId=b.dataset.id;render();});
+}
+
+function field(path, label, opts={}){
+  const val = getByPath(rec(), path) ?? '';
+  const tip = opts.tip ? `<span class="tip"> · ${esc(opts.tip)}</span>` : '';
+  if(opts.area) return `<div class="field"><label>${esc(label)}${tip}</label>
+    <textarea data-path="${path}" class="${opts.tall?'tall':''} ${opts.mono?'mono':''}"
+    placeholder="${esc(opts.ph||'')}">${esc(val)}</textarea></div>`;
+  return `<div class="field"><label>${esc(label)}${tip}</label>
+    <input type="text" data-path="${path}" class="${opts.mono?'mono':''}"
+    value="${esc(val)}" placeholder="${esc(opts.ph||'')}"></div>`;
+}
+function sectionHead(title, desc, action=''){
+  return `<div class="section-head"><h2>${esc(title)} <span class="desc">${esc(desc)}</span></h2>${action}</div>`;
+}
+function decisionCard(d, di){
+  const opts = (d.options||[]).map((o,oi)=>`<div class="card"><div class="row">
+    <span class="key">${esc(o.key||String.fromCharCode(65+oi))}</span>
+    <input type="text" data-path="decisions.${di}.options.${oi}.label" value="${esc(o.label||'')}" placeholder="选项名称">
+    <button class="btn sm danger" data-act="delOption" data-i="${di}" data-j="${oi}">删</button></div>
+    <textarea data-path="decisions.${di}.options.${oi}.why" style="margin-top:8px"
+    placeholder="为什么有这个选项 / 代价是什么">${esc(o.why||'')}</textarea></div>`).join('');
+  const pending = !d.choice;
+  return `<div class="decision ${pending?'pending-dec':''}">
+    ${field(`decisions.${di}.question`,'需要研究者拍板的问题',{ph:'遇到关键选择时写在这里'})}
+    <div style="font-size:12px;color:var(--muted);margin:4px 0 8px">选项与理由 · Agent 讲清楚，决定权在你</div>
+    ${opts}
+    <div style="display:flex;gap:8px;margin:8px 0">
+      <button class="btn sm" data-act="addOption" data-i="${di}">＋ 加选项</button>
+      <button class="btn sm danger" data-act="delDecision" data-i="${di}">删除这个选择</button>
+    </div>
+    <div class="grid3">
+      ${field(`decisions.${di}.recommend`,'Agent 推荐',{ph:'A / B / C'})}
+      ${field(`decisions.${di}.choice`,'研究者拍板',{ph:'留空表示待决定'})}
+      ${field(`decisions.${di}.note`,'备注',{ph:'拍板理由 / 时间'})}
+    </div>
+    <div class="verdict ${pending?'wait':''}">${pending
+      ? '待研究者决定' + (d.recommend?` · Agent 推荐 ${esc(d.recommend)}`:'')
+      : '已拍板 '+esc(d.choice) + (d.recommend&&d.recommend!==d.choice?` · Agent 推荐 ${esc(d.recommend)}`:'')}</div>
+  </div>`;
+}
+function codeCard(c, ci){
+  return `<div class="card">
+    <div class="row"><input type="text" data-path="code.${ci}.label" value="${esc(c.label||'')}" placeholder="代码标题">
+    <input type="text" data-path="code.${ci}.path" class="mono" value="${esc(c.path||'')}" placeholder="项目内相对路径">
+    <input type="text" data-path="code.${ci}.lang" value="${esc(c.lang||'')}" placeholder="R" style="max-width:70px">
+    <button class="btn sm danger" data-act="delCode" data-i="${ci}">删</button></div>
+    ${c.path?`<a href="/api/asset?path=${encodeURIComponent(c.path)}" target="_blank"
+      style="font-size:11px;color:var(--accent);display:inline-block;margin-top:6px">打开源文件 ↗</a>`
+      :`<div style="font-size:11px;color:var(--muted);margin-top:6px">无本地文件时可把代码直接贴进来</div>`}
+    <textarea class="mono" data-path="code.${ci}.content" style="margin-top:8px;min-height:70px"
+      placeholder="留空则报告自动从上面的路径读取文件（推荐）">${esc(c.content||'')}</textarea>
+  </div>`;
+}
+function fileCard(f, fi){
+  const isImg = /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(f.path||'');
+  return `<div class="card">
+    <div class="row"><input type="text" data-path="files.${fi}.path" class="mono" value="${esc(f.path||'')}" placeholder="项目内相对路径">
+    <button class="btn sm danger" data-act="delFile" data-i="${fi}">删</button></div>
+    ${isImg?`<img class="thumb" src="/api/asset?path=${encodeURIComponent(f.path||'')}" alt="">`:''}
+    <div class="grid2" style="margin-top:8px">
+      ${field(`files.${fi}.caption`,'图注 / 说明',{ph:'这张图在说什么'})}
+      ${field(`files.${fi}.serverPath`,'服务器原始路径',{ph:'可选，只记出处',mono:true})}
+    </div>
+  </div>`;
+}
+function metricRow(m, mi){
+  return `<div class="row" style="margin-bottom:6px">
+    <input type="text" data-path="result.metrics.${mi}.label" value="${esc(m.label||'')}" placeholder="指标">
+    <input type="text" data-path="result.metrics.${mi}.value" value="${esc(m.value||'')}" placeholder="数值" class="mono">
+    <input type="text" data-path="result.metrics.${mi}.note" value="${esc(m.note||'')}" placeholder="说明">
+    <button class="btn sm danger" data-act="delMetric" data-i="${mi}">删</button></div>`;
+}
+
+function render(){
+  if(!L) return;
+  $('#rootInput').value = L.project.root;
+  $$('[data-meta]').forEach(el=>{ el.value = getByPath(L, el.dataset.meta) ?? ''; });
+  renderList();
+  const r = rec();
+  if(!r){ $('#editor').innerHTML='<div class="pad"><div class="empty">从左侧选一条记录，或点「新增一步」</div></div>'; return; }
+  const E = [];
+  E.push(`<div class="pad">`);
+  E.push(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div><span class="pill">锚点</span> <span class="anchor">${esc(r.id)}</span></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn sm" data-act="handoff">复制接手文本</button>
+      <button class="btn sm danger" data-act="delRecord">删除本步</button></div></div>`);
+  E.push(`<div class="section">${sectionHead('① 基本信息','带我看懂：这一步回答什么、来自哪里')}
+    <div class="grid2">${field('title','步骤标题')}
+      <div class="field"><label>状态</label><select data-path="status">
+        <option value="done" ${r.status!=='pending'?'selected':''}>已完成</option>
+        <option value="pending" ${r.status==='pending'?'selected':''}>待决定</option></select></div></div>
+    ${field('question','这一步回答什么问题',{area:true,ph:'例如：两组的 log2CPM 有没有差别？'})}
+    ${field('provenance','来自哪些数据和步骤',{area:true,ph:'数据文件、上游步骤、口径来源'})}
+  </div>`);
+  E.push(`<div class="section">${sectionHead('② 关键选择','提示我判断：Agent 讲清选项和理由，请我决定',
+    '<button class="btn sm" data-act="addDecision">＋ 加一个选择</button>')}
+    ${(r.decisions||[]).map(decisionCard).join('')||'<div class="empty" style="padding:14px">这一步没有需要拍板的选择</div>'}
+  </div>`);
+  E.push(`<div class="section">${sectionHead('③ 结果与内容介绍','结果是什么、怎么读',
+    '<button class="btn sm" data-act="addMetric">＋ 加指标</button>')}
+    ${field('result.headline','一句话结论',{ph:'例如：未观察到两组 log2CPM 存在差别证据'})}
+    ${field('result.body','结果介绍',{area:true,tall:true,ph:'支持换行；写清读法、局限、不要过度解读什么'})}
+    ${(r.result?.metrics||[]).map(metricRow).join('')}
+  </div>`);
+  E.push(`<div class="section">${sectionHead('④ 结果图','勾选右侧图片即关联；报告里自动内嵌',
+    '<button class="btn sm" data-act="addFile">＋ 手动加文件</button>')}
+    ${(r.files||[]).map(fileCard).join('')||'<div class="empty" style="padding:14px">还没有关联图片或文件</div>'}
+  </div>`);
+  E.push(`<div class="section">${sectionHead('⑤ 技术细节','环境、版本、参数、统计方法、踩过的坑')}
+    ${field('technical','技术细节',{area:true,tall:true,mono:false,ph:'支持换行和 - 列表；写清可复现所需的信息'})}
+  </div>`);
+  E.push(`<div class="section">${sectionHead('⑥ 代码','只记路径；报告生成时现场读文件',
+    '<button class="btn sm" data-act="addCode">＋ 加代码</button>')}
+    ${(r.code||[]).map(codeCard).join('')||'<div class="empty" style="padding:14px">还没有关联代码</div>'}
+  </div>`);
+  E.push(`<div class="divider"></div><div style="font-size:12px;color:var(--muted)">
+    指着锚点 <code>${esc(r.id)}</code> 对 Agent 提要求，就能准确接手这一步，不会改动已定口径。</div>`);
+  E.push(`</div>`);
+  $('#editor').innerHTML = E.join('');
+
+  $$('#editor [data-path]').forEach(el=>{
+    const handler = ()=>{ setByPath(rec(), el.dataset.path, el.value);
+      scheduleSave();
+      if(el.dataset.path.endsWith('.choice')||el.dataset.path==='status') render();
+    };
+    el.addEventListener(el.tagName==='SELECT'?'change':'input', handler);
+  });
+  $$('#editor [data-act]').forEach(b=>b.onclick=()=>action(b.dataset.act,+b.dataset.i,+b.dataset.j));
+  renderFiles();
+}
+
+function renderFiles(){
+  const q = ($('#fileFilter').value||'').toLowerCase();
+  const linked = new Set([...(rec()?.files||[]).map(f=>f.path), ...(rec()?.code||[]).map(c=>c.path)]);
+  const items = FILES.filter(f=>!q || f.path.toLowerCase().includes(q))
+    .filter(f=>f.interesting || linked.has(f.path));
+  $('#fileList').innerHTML = items.length ? `<div class="pad" style="padding-top:4px">`+
+    items.map(f=>`<label class="file-item" title="${esc(f.path)}">
+      <input type="checkbox" data-file="${esc(f.path)}" ${linked.has(f.path)?'checked':''}>
+      <span class="k">${esc(f.kind)}</span><span class="nm">${esc(f.path)}</span>
+      <span class="sz">${(f.size/1024).toFixed(0)}K</span></label>`).join('')+`</div>`
+    : '<div class="empty">没有匹配的文件</div>';
+  $$('#fileList input[data-file]').forEach(cb=>cb.onchange=()=>toggleFile(cb.dataset.file, cb.checked));
+}
+function classify(p){
+  if(/\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(p)) return 'image';
+  if(/\.(R|r|py|sh|jl|sql|m|js|ts)$/.test(p)) return 'script';
+  return 'file';
+}
+function toggleFile(path, on){
+  const r = rec(); if(!r) return;
+  r.files = r.files||[]; r.code = r.code||[];
+  const kind = classify(path);
+  if(on){
+    if(kind==='script'){
+      if(!r.code.some(c=>c.path===path)) r.code.push({label:path.split('/').pop(),path,lang:'',content:''});
+    } else if(!r.files.some(f=>f.path===path)){
+      r.files.push({path,caption:kind==='image'?'':'',serverPath:'',origin:'local'});
+    }
+  } else {
+    r.code = r.code.filter(c=>c.path!==path);
+    r.files = r.files.filter(f=>f.path!==path);
+  }
+  save(true); render();
+}
+function action(act, i, j){
+  const r = rec(); if(!r) return;
+  if(act==='addDecision'){ r.decisions=r.decisions||[]; r.decisions.push({id:'d-'+Math.random().toString(16).slice(2,10),
+    question:'',options:[{key:'A',label:'',why:''},{key:'B',label:'',why:''}],recommend:'',choice:'',note:''}); }
+  if(act==='delDecision') r.decisions.splice(i,1);
+  if(act==='addOption'){ const d=r.decisions[i]; d.options=d.options||[];
+    d.options.push({key:String.fromCharCode(65+d.options.length),label:'',why:''}); }
+  if(act==='delOption') r.decisions[i].options.splice(j,1);
+  if(act==='addMetric'){ r.result=r.result||{}; r.result.metrics=r.result.metrics||[];
+    r.result.metrics.push({label:'',value:'',note:''}); }
+  if(act==='delMetric') r.result.metrics.splice(i,1);
+  if(act==='addCode'){ r.code=r.code||[]; r.code.push({label:'',path:'',lang:'',content:''}); }
+  if(act==='delCode') r.code.splice(i,1);
+  if(act==='addFile'){ r.files=r.files||[]; r.files.push({path:'',caption:'',serverPath:'',origin:'local'}); }
+  if(act==='delFile') r.files.splice(i,1);
+  if(act==='delRecord'){
+    if(!confirm('确定删除这一步？删除会立即写入项目账本，建议先确认已备份 .agent-log/ledger.json。')) return;
+    L.records = L.records.filter(x=>x.id!==r.id); curId = L.records[0]?.id||null; }
+  if(act==='handoff'){
+    api('/api/handoff?id='+encodeURIComponent(r.id)).then(d=>{
+      if(d.ok){ navigator.clipboard.writeText(d.text).then(()=>toast('接手文本已复制，可直接发给 Agent'));
+        modalText=d.text; showModal('接手文本 · 锚点 '+r.id,'<pre>'+esc(d.text)+'</pre>'); }
+    }); return; }
+  save(true); render();
+}
+async function addRecord(){
+  clearTimeout(saveTimer);
+  const d = await api('/api/new-id',{method:'POST',body:'{}'});
+  L.records.push({id:d.id,title:'新的一步',status:'done',question:'',provenance:'',
+    result:{headline:'',body:'',metrics:[]},technical:'',code:[],files:[],decisions:[]});
+  curId=d.id; await save(true); render(); toast('已新增一步，从右边勾选文件开始');
+}
+function showModal(title, bodyHtml, text=''){
+  $('#modalTitle').textContent=title; $('#modalBody').innerHTML=bodyHtml;
+  modalText=text; $('#modal').classList.add('show');
+}
+async function load(){
+  const st = await api('/api/state');
+  const led = await api('/api/ledger');
+  L = led; if(!L.records) L.records=[];
+  curId = L.records[0]?.id || null;
+  $('#rootInput').value = L.project.root;
+  await rescan();
+  render();
+  status(`项目已打开 · ${L.records.length} 条记录 · ${FILES.length} 个文件`);
+}
+async function rescan(){
+  const d = await api('/api/files'); FILES = d.files||[];
+  if(L) renderFiles();
+}
+$('#btnOpenProject').onclick = async ()=>{
+  const root = $('#rootInput').value.trim();
+  if(!root) return toast('先填一个本地项目目录');
+  try{ const d = await api('/api/project',{method:'POST',body:JSON.stringify({root})});
+    if(!d.ok) return toast(d.error||'打开失败'); await load(); toast('已打开 '+d.root); }
+  catch(e){ toast('打开失败：'+e.message); }
+};
+$('#rootInput').onkeydown = e=>{ if(e.key==='Enter') $('#btnOpenProject').click(); };
+$('#btnRescan').onclick = async ()=>{ await rescan(); toast(`已扫描 ${FILES.length} 个文件`); };
+$('#fileFilter').oninput = ()=>{ if(L) renderFiles(); };
+$('#btnSave').onclick = ()=>save(false);
+$('#btnAdd').onclick = addRecord;
+$('#btnReport').onclick = async ()=>{
+  clearTimeout(saveTimer); status('正在生成报告…');
+  try{ const d = await api('/api/report',{method:'POST',body:JSON.stringify({ledger:L})});
+    if(!d.ok) return toast('生成失败：'+d.error);
+    status(`报告已生成 · ${d.records} 条记录 · ${d.images} 张图`);
+    showModal('报告已生成',
+      `<p style="margin:0 0 10px;color:var(--muted);font-size:13px">
+      单文件 HTML 图片已内嵌，可直接打印成 PDF；Markdown 版便于转 Word。</p>
+      <div class="card"><div><b>HTML</b><div class="mono" style="font-size:11px;word-break:break-all">${esc(d.html)}</div></div>
+      <div style="margin-top:8px"><b>Markdown</b><div class="mono" style="font-size:11px;word-break:break-all">${esc(d.markdown)}</div></div></div>
+      <div style="margin-top:12px"><a href="/api/asset?path=${encodeURIComponent('Agent执行记录_报告/report.html')}"
+      target="_blank"><button class="btn primary">打开报告</button></a></div>`, d.html);
+  }catch(e){ toast('生成失败：'+e.message); status('生成失败'); }
+};
+$('#btnOpenReport').onclick = ()=>window.open('/api/asset?path='+encodeURIComponent('Agent执行记录_报告/report.html'),'_blank');
+$('#btnReveal').onclick = ()=>api('/api/reveal',{method:'POST',body:JSON.stringify({path:''})})
+  .then(()=>toast('已在 Finder 中定位项目目录')).catch(e=>toast(e.message));
+$('#btnSync').onclick = async ()=>{
+  const linked = [...new Set([...(rec()?.files||[]).map(f=>f.path),...(rec()?.code||[]).map(c=>c.path)])];
+  const paths = linked.length? linked : ['results/your_script.R','results/your_figure.png'];
+  const alias = L.project?.server?.alias||'', sroot=L.project?.server?.root||'';
+  try{ const d=await api('/api/sync-command',{method:'POST',
+    body:JSON.stringify({paths:paths.map(p=>p.replace(/^.*\//,'')),alias,serverRoot:sroot,localDir:'from_server'})});
+    if(!d.ok) return toast(d.error);
+    showModal('同步命令 · 未执行，仅供复制',
+      `<p style="font-size:13px;color:var(--muted);margin:0 0 10px">
+      本工作台不连服务器。把下面命令复制到终端自己跑，只拉脚本 / 图片 / 小结果表；
+      数 GB 的数据集不要下载到本机。跑完回来点「重新扫描文件」。</p><pre>${esc(d.command)}</pre>`, d.command);
+  }catch(e){ toast(e.message); }
+};
+$('#btnCopy').onclick = ()=>{ navigator.clipboard.writeText(modalText).then(()=>toast('已复制')); };
+$('#btnCloseModal').onclick = ()=>$('#modal').classList.remove('show');
+$('#modal').onclick = e=>{ if(e.target.id==='modal') $('#modal').classList.remove('show'); };
+window.addEventListener('beforeunload', ()=>{ if(saveTimer) save(true); });
+$$('[data-meta]').forEach(el=>el.addEventListener('input',()=>{
+  if(!L) return; setByPath(L, el.dataset.meta, el.value); scheduleSave();
+}));
+load().catch(e=>{ status('加载失败：'+e.message); toast('加载失败：'+e.message); });
+</script>
+</body>
+</html>

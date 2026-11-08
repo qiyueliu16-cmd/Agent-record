@@ -1,0 +1,260 @@
+{
+  "schema": 1,
+  "app": "agent-execution-log",
+  "project": {
+    "name": "示例课题 · 两组样本表达量比较（合成数据）",
+    "root": "",
+    "server": {
+      "alias": "my-server",
+      "root": "/home/user/project",
+      "note": "大规模数据留在服务器，此处只登记出处；小文件可按需同步"
+    }
+  },
+  "question": "示例：在两组样本之间，目标基因的表达量是否存在差异？（全部为合成演示数据）",
+  "updatedAt": "2026-11-08T10:56:35",
+  "records": [
+    {
+      "id": "r-demo-0001",
+      "title": "① 数据体检｜20 个样本，两组测序深度不平衡",
+      "status": "done",
+      "question": "这批合成示例数据能不能直接用来比较两组的表达量？",
+      "provenance": "只读 results/summary.csv（20 个合成样本，Group A 10 / Group B 10）。本步只做描述，不做组间检验。全部数值均为演示用合成数据，不对应任何真实研究结果。",
+      "decisions": [
+        {
+          "id": "d-demo-0001",
+          "question": "正式主分析用哪一版数据？",
+          "options": [
+            {
+              "key": "A",
+              "label": "全体 20 个样本",
+              "why": "样本最全、口径最简单；但两组 n_cells 差异明显，可能掺入测序深度影响"
+            },
+            {
+              "key": "B",
+              "label": "深度匹配版",
+              "why": "剥离深度影响后比较更公平；代价是匹配后有效信息更少、区间更宽"
+            },
+            {
+              "key": "C",
+              "label": "公共 panel 版",
+              "why": "跨队列可比性最好；但换了度量，结论不能与原始 log2CPM 并列"
+            }
+          ],
+          "recommend": "B",
+          "choice": "A",
+          "note": "示例账本中的已定决策：主口径用全体样本，深度匹配版留作稳健性对照",
+          "status": "decided"
+        }
+      ],
+      "result": {
+        "headline": "可以用于演示比较流程，但直接比 log2CPM 会掺入深度差异",
+        "body": "Group A 与 Group B 各 10 例，n_cells 中位数 5200 对 2400，深度不平衡。\ndetect_rate 中位数 41.2 对 66.8，方向与 log2CPM 不同，提示「测到多少」与「表达多高」不是一回事。\n本页全部数值为合成演示数据，仅用于说明工作台字段与报告结构。",
+        "metrics": [
+          {
+            "label": "样本数",
+            "value": "20",
+            "note": "A 10 / B 10（合成）"
+          },
+          {
+            "label": "n_cells 中位数",
+            "value": "5200 / 2400",
+            "note": "A / B，深度不平衡"
+          },
+          {
+            "label": "detect_rate 中位数",
+            "value": "41.2 / 66.8",
+            "note": "A / B，方向不同"
+          }
+        ]
+      },
+      "technical": "R base：read.csv 只读；aggregate(cbind(n_cells, log2CPM, detect_rate) ~ group, FUN=median)。\n未做缺失值填补、未做标准化，保留原始口径供复核。",
+      "code": [
+        {
+          "label": "数据体检",
+          "path": "scripts/step1_data_audit.R",
+          "lang": "R",
+          "content": ""
+        }
+      ],
+      "files": [
+        {
+          "path": "results/summary.csv",
+          "caption": "合成示例数据表（20 行）",
+          "serverPath": "",
+          "origin": "local"
+        }
+      ],
+      "createdAt": "2026-11-08T10:56:35",
+      "updatedAt": "2026-11-08T10:56:35"
+    },
+    {
+      "id": "r-demo-0002",
+      "title": "② 对照｜样本级主分析（演示基准口径）",
+      "status": "done",
+      "question": "以样本为单位，两组的 log2CPM 有没有差别、差多少？",
+      "provenance": "承接 ① 的同一份 results/summary.csv；这一格是引导用的演示基准，后来正式主分析沿用相同口径，因此数值一致。",
+      "decisions": [
+        {
+          "id": "d-demo-0002",
+          "question": "主要报告哪个效应指标？",
+          "options": [
+            {
+              "key": "A",
+              "label": "log2CPM（Wilcoxon + 位移与 95% CI）",
+              "why": "连续尺度，能回答「高多少」而不只是「有没有差别」"
+            },
+            {
+              "key": "B",
+              "label": "detect_rate（检出率）",
+              "why": "对低表达更稳健；但反映「多少细胞测到」，不等于表达量"
+            },
+            {
+              "key": "C",
+              "label": "两个都报，后者作敏感性分析",
+              "why": "结论最稳；代价是多跑一格、结果段更长"
+            }
+          ],
+          "recommend": "A",
+          "choice": "A",
+          "note": "示例账本中的已定决策：主结果只报 log2CPM",
+          "status": "decided"
+        }
+      ],
+      "result": {
+        "headline": "中位数几乎相同，且置信区间跨过 0",
+        "body": "p 值不显著表示没有给出「两组不同」的证据，不等于证明两组相同。\nHodges-Lehmann 位移 0.01、95% CI [-0.42, 0.38] 跨过 0：既不能排除降低，也不能排除升高。\n读结果时应同时报位移与区间，只报 p 值会丢掉「差多少」这层信息。",
+        "metrics": [
+          {
+            "label": "中位数 (A / B)",
+            "value": "7.10 / 7.08",
+            "note": "log2CPM（合成）"
+          },
+          {
+            "label": "中位数差",
+            "value": "0.02",
+            "note": "A − B"
+          },
+          {
+            "label": "Wilcoxon p",
+            "value": "0.91",
+            "note": "秩和检验"
+          },
+          {
+            "label": "HL 位移",
+            "value": "0.01",
+            "note": "95% CI [-0.42, 0.38]"
+          }
+        ]
+      },
+      "technical": "R base：wilcox.test(x, y, conf.int=TRUE, exact=FALSE)；x/y 分别为两组的 log2CPM。\n图形：boxplot + stripchart(method=\"jitter\")，导出 SVG 矢量示意图。\n科研图内标注一律英文，坐标轴写 n，去掉冗余图例。",
+      "code": [
+        {
+          "label": "演示基准主分析",
+          "path": "scripts/step2_group_test.R",
+          "lang": "R",
+          "content": ""
+        }
+      ],
+      "files": [
+        {
+          "path": "figures/group_boxplot.svg",
+          "caption": "两组 log2CPM 箱线图（演示基准，合成数据）",
+          "serverPath": "",
+          "origin": "local"
+        }
+      ],
+      "createdAt": "2026-11-08T10:56:35",
+      "updatedAt": "2026-11-08T10:56:35"
+    },
+    {
+      "id": "r-demo-0003",
+      "title": "③ 正式主分析｜A + A 口径（全体样本 · log2CPM）",
+      "status": "done",
+      "question": "两组的样本级 log2CPM 是否不同，差多少？",
+      "provenance": "口径由 ① 选 A（全体 20 个样本）、② 选 A（主报 log2CPM）共同确定。与 ② 演示基准同口径，正式化的是「口径确定」与报告完整度，不是换一组数。原始只读数据仍是 results/summary.csv。",
+      "decisions": [
+        {
+          "id": "d-demo-0003",
+          "question": "主分析得到「无差别证据」且区间较宽，下一步怎么走？",
+          "options": [
+            {
+              "key": "A",
+              "label": "就此收束，写结果段",
+              "why": "口径已定、结果可复核；如实写未观察到差异证据，不再增加分析"
+            },
+            {
+              "key": "B",
+              "label": "补一格 detect_rate 敏感性分析",
+              "why": "该指标方向与 log2CPM 不同；不改变已定主口径，但能说明结论对度量是否敏感"
+            },
+            {
+              "key": "C",
+              "label": "补一格深度匹配版做稳健性对照",
+              "why": "排除测序深度混杂；作为附加证据，不推翻 A+A 的正式口径"
+            }
+          ],
+          "recommend": "B",
+          "choice": "",
+          "note": "",
+          "status": "pending"
+        }
+      ],
+      "result": {
+        "headline": "未观察到两组 log2CPM 存在差别证据，且估计区间较宽",
+        "body": "两组中位数 7.10 与 7.08，差 0.02；Wilcoxon p = 0.91，Hodges-Lehmann 位移 0.01，95% CI [-0.42, 0.38]。\n- 结论是「没有差别证据」，不是「证明两组相同」\n- 区间跨过 0，既不能排除降低也不能排除升高\n- 本口径的已知局限：n_cells 中位数 5200 / 2400，测序深度不平衡；detect_rate 方向不同，按示例决定不进入主结果\n以上均为合成演示数据，仅用于说明报告结构。",
+        "metrics": [
+          {
+            "label": "中位数 (A / B)",
+            "value": "7.10 / 7.08",
+            "note": "n = 10 / 10"
+          },
+          {
+            "label": "中位数差",
+            "value": "0.02",
+            "note": "A − B"
+          },
+          {
+            "label": "Wilcoxon p",
+            "value": "0.91",
+            "note": "exact = FALSE, conf.int = TRUE"
+          },
+          {
+            "label": "HL 位移",
+            "value": "0.01",
+            "note": "95% CI [-0.42, 0.38]"
+          },
+          {
+            "label": "n_cells 中位数",
+            "value": "5200 / 2400",
+            "note": "深度不平衡，属已知局限"
+          }
+        ]
+      },
+      "technical": "R base：wilcox.test(x, y, conf.int=TRUE, exact=FALSE)，同时报组间中位数差与 HL 位移。\n效应量解释以位移 + 95% CI 为主，p 值仅作辅助。\n出图：boxplot(outline=FALSE) + stripchart(jitter)，坐标标签英文并写 n。\n同图导出 SVG 矢量文件；账本只登记相对路径，报告生成时现场读取。",
+      "code": [
+        {
+          "label": "正式主分析 A+A",
+          "path": "scripts/step3_primary_analysis.R",
+          "lang": "R",
+          "content": ""
+        }
+      ],
+      "files": [
+        {
+          "path": "figures/primary_boxplot.svg",
+          "caption": "正式主分析：全体 20 个样本的 log2CPM，Group A (n=10) 与 Group B (n=10)",
+          "serverPath": "",
+          "origin": "local"
+        },
+        {
+          "path": "results/summary.csv",
+          "caption": "原始合成数据表，供复核",
+          "serverPath": "",
+          "origin": "local"
+        }
+      ],
+      "createdAt": "2026-11-08T10:56:35",
+      "updatedAt": "2026-11-08T10:56:35"
+    }
+  ]
+}
